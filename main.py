@@ -23,7 +23,10 @@ def cubic_lnterpolation(copy_image, delta):
             new_pixel = get_cubic_pixel(src_x, y, copy_image, height, width)
 
             defmat[y][newx] = new_pixel
-    return defmat
+
+    ret = cv2.rectangle(defmat, (x1, y1), (x2, y2),  color=color, thickness=thickness)
+    cv2.imshow("new image", ret)
+    cv2.waitKey(0)
 
 
 def get_cubic_pixel(src_x, y, copy_image, height, width):
@@ -124,70 +127,14 @@ def click_event(event, x, y, flags, params):
             points[2][1] = clicked_y
         num_of_clicks += 1
 
-# function that returns all y values of the ellipse by x in array.
-
-def get_ellipse_arr():
-    global radiusX, radiusY
-    a = -radiusX / pow(radiusY, 2)
-    b = radiusX
-    return [a * pow(x, 2) + b for x in range(-math.floor(radiusY), math.floor(radiusY)+1)]
-
-
-def parabola(y):
-    parab_pts = get_ellipse_arr()
-    first = parab_pts[0]
-    if y1 <= y < y2:
-        return int(parab_pts[y-y1]+x_mid)
-    return -1
-
-
-def transform():
-    for y in range(y1, y2):
-        parab_x = parabola(y)
-        left_to_parab = parab_x - x1
-        right_to_parab = parab_x - x_mid_round
-        for x in range(x1, x2):
-            if x <= x_mid_round:
-                relative = x-x1
-                scale = relative / x_mid
-                delta = round(left_to_parab*scale)
-                new_image[y-col][x1+delta-row] = img[y][x]
-            else:
-                relative = x - x_mid_round
-                scale = 1 - (relative / x_mid)
-                delta = round((x_mid - right_to_parab) * scale)
-                new_image[y-col][x2-delta-row] = img[y][x]
-    # cv2.imshow(img_name, new_image)
-    # cv2.waitKey(0)
-    print("transform end")
-
-
-def op_transform():
-    print("inside op")
-    for j in range(row):
-        parab_x = parabola(j)
-        for i in range(col):
-            left_to_parab = parab_x - x1
-            right_to_parab = parab_x - x_mid_round
-            if x1 <= i <= x2 and y1 <= j <= y2: ##make sure it's correct
-                if j <= parab_x:
-                    x = (((j - x1) / left_to_parab) * x_mid) + x1
-                    y = i
-                    new_image[i, j] = nn_interpolation(img, y, x)
-                else:
-                    x = ((((-j + x1) / (x_mid - right_to_parab)) - 1) * x_mid * (-1)) + x_mid_round
-                    y = i
-                    new_image[i, j] = nn_interpolation(img, y, x)
-            else:
-                new_image[i, j] = img[i, j]
-    cv2.imshow(img_name, new_image)
-    cv2.waitKey(0)
-
+def draw_rect(usrimg):
+    cv2.rectangle(img, (x1, y1), (x2, y2),  color=color, thickness=thickness)
 
 # Press the green button in the gutter to run the script.
 # --------- Read and present image -------------
 # path = input("Hi, pls enter image path:\n")
-img = cv2.imread("/Users/Owner/PycharmProjects/Digital-Image-Processing-ass1//test3.jpeg", 0)
+img = cv2.imread("/Users/gal_private/Documents/Digital-Image-Processing-ass1//test3.jpeg", 0)
+copy_image = img.copy()
 
 while True:
     x_mid = (x2 + x1) / 2
@@ -216,33 +163,21 @@ while True:
         thickness = 2
         color = (255, 255, 255)
         img = cv2.rectangle(img, (x1, y1), (x2, y2),  color=color, thickness=thickness)
-
         cv2.line(img, (x_mid_round, y1), (x_mid_round, y2), color, thickness)
 
     elif num_of_clicks == 4:
-        # transform()
-        # op_transform()
-        copy_image = img.copy()
         newmat = cubic_lnterpolation(copy_image, delta)
         # newmat = linear_lnterpolation(copy_image, delta)
         # newmat = deformnn(copy_image, delta)
-        # draw_rect(newmat)
-        cv2.imshow("new image", newmat)
-        cv2.waitKey(0)
+
 
 
     for x in range(0,3):
         cv2.circle(img, (int(points[x][0]), int(points[x][1])), 10, (255, 255, 255), cv2.FILLED)
 
-    # with warnings.catch_warnings():
-    #     warnings.filterwarnings('error')
-    #     try:
-    #         coefficients = np.polyfit([1], [2], 2)
-    #     except np.RankWarning:
-    #         print("")
 
     cv2.imshow(img_name, img)
-    # cv2.setWindowProperty(img_name, cv2.WND_PROP_TOPMOST, 1)
+    cv2.setWindowProperty(img_name, cv2.WND_PROP_TOPMOST, 1)
     cv2.setMouseCallback(img_name, click_event)
     cv2.waitKey(1)
 
