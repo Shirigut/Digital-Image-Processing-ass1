@@ -1,105 +1,114 @@
 import cv2
 import numpy as np
 import math
-import warnings
-from numpy.polynomial import Polynomial
-# "/Users/gal_private/Documents/Digital-Image-Processing-ass1//test.jpeg"
+
 num_of_clicks = 0
-(x1, y1) = (0,0)
-(x2, y2) = (0,0)
+(x1, y1) = (0, 0)
+(x2, y2) = (0, 0)
 clicked_x = 0
 clicked_y = 0
 img_name = "img"
-counter = 0
 points = np.zeros((3, 2))
 delta = 1
 
-def cubic_lnterpolation(copy_image, delta):
-    height, width = copy_image.shape
-    defmat = np.zeros((height, width, 3), np.uint8)
-    for y in range(0, height):
-        for newx in range(0, width):
-            src_x = detransform(newx, y, delta)
-            new_pixel = get_cubic_pixel(src_x, y, copy_image, height, width)
 
-            defmat[y][newx] = new_pixel
-
-    ret = cv2.rectangle(defmat, (x1, y1), (x2, y2),  color=color, thickness=thickness)
-    cv2.imshow("new image", ret)
-    cv2.waitKey(0)
+def nn_interpolation(copy_image, delta):
+    row, col = copy_image.shape
+    new_image = np.zeros((row, col, 3), np.uint8)
+    for j in range(0, row):
+        for i in range(0, col):
+            x = int(op_transform(i, j, delta))
+            new_image[j, i] = copy_image[j, x]
+    return new_image
 
 
-def get_cubic_pixel(src_x, y, copy_image, height, width):
-    new_pixel = copy_image[y][math.floor(src_x)]
+def cubic_interpolation(copy_image, delta):
+    row, col = copy_image.shape
+    new_image = np.zeros((row, col, 3), np.uint8)
+    for j in range(0, row):
+        for i in range(0, col):
+            src_x = op_transform(i, j, delta)
+            new_image[j,i] = get_cubic_pixel(src_x, j, copy_image, row, col)
+    return new_image
+
+
+def get_cubic_pixel(src_x, y, copy_image, row, col):
     dx, dy = abs(round(src_x) - src_x), abs(round(y) - y)
-
-    sumGrayScaler = 0
-    # sumB, sumG, sumR = 0, 0, 0
-
-    # print(str(new_pixel) + "old_pixel")
-    if round(src_x) + 3 < width and round(y) + 3 < height:
+    sum = 0
+    if round(src_x) + 3 < col and round(y) + 3 < row:
         for i in range(-1, 3):
             for j in range(-1, 3):
-                cax = cubicEquationSolver(j + dx, -0.5)
-                cay = cubicEquationSolver(i + dy, -0.5)
-                sumGrayScaler = sumGrayScaler + copy_image[round(y) + i][round(src_x) + j] * cax * cay
-
-    if sumGrayScaler > 255:
-        sumGrayScaler = 255
-    elif sumGrayScaler < 0:
-        sumR = 0
-
-    new_pixel = (sumGrayScaler)
-    return new_pixel
+                cax = cubic_solver(j + dx, -0.5)
+                cay = cubic_solver(i + dy, -0.5)
+                sum = sum + copy_image[round(y) + i][round(src_x) + j] * cax * cay
+    if sum > 255:
+        sum = 255
+    elif sum < 0:
+        sum = 0
+    return sum
 
 
-def cubicEquationSolver(d, a):
+def cubic_solver(d, a):
     d = abs(d)
     if 0.0 <= d <= 1.0:
-        score = (a + 2.0) * pow(d, 3.0) - ((a + 3.0) * pow(d, 2.0)) + 1.0
-        return score
-
+        return (a + 2.0) * pow(d, 3.0) - ((a + 3.0) * pow(d, 2.0)) + 1.0
     elif 1.0 < d <= 2.0:
-        score = a * pow(d, 3.0) - 5.0 * a * pow(d, 2.0) + 8.0 * a * d - 4.0 * a
-        return score
-
+        return a * pow(d, 3.0) - 5.0 * a * pow(d, 2.0) + 8.0 * a * d - 4.0 * a
     else:
         return 0.0
 
-def detransform(newx, y, delta):
-    topleft_x, topleft_y = int(min(x1, x2)), int(min(y1, y2))
-    btmright_x, btmright_y = int(max(x1, x2)), int(max(y1, y2))
 
-    midx = int((topleft_x + btmright_x) / 2)
+def op_transform(newx, y, delta):
     x = newx
-
-    if newx > topleft_x and newx < btmright_x and y < btmright_y and y > topleft_y:
-        ex = get_elipse_x(y, delta)
-
+    if x1 < newx < x2 and y1 < y < y2:
+        ex = get_ellipse(y, delta)
         if newx < ex:
-            x = ((newx - topleft_x) * (midx - topleft_x)) / (ex - topleft_x) + topleft_x
+            x = ((newx - x1) * (x_mid_round - x1)) / (ex - x1) + x1
         elif newx > ex:
-            x = ((btmright_x - midx) * (newx - ex)) / (btmright_x - ex) + midx
+            x = ((x2 - x_mid_round) * (newx - ex)) / (x2 - ex) + x_mid_round
     return x
 
 
-def get_elipse_x(y, delta):
-    # solve equasion
-    T = pow(y - elipseEqVals[2][1], 2) / pow(elipseEqVals[1], 2)
-    c = pow(elipseEqVals[2][0], 2) - (1 - T) * pow(elipseEqVals[0], 2)
-    b = -2 * elipseEqVals[2][0]
+def linear_interpolation(copy_image, delta):
+    height, width = copy_image.shape
+    new_image = np.zeros((height, width, 3), np.uint8)
+    for j in range(0, height):
+        for i in range(0, width):
+            src_x = op_transform(i, j, delta)
+            new_pixel = get_linear_pixel(src_x, j, copy_image, height, width)
+            new_image[j][i] = new_pixel
+    return new_image
+
+
+def get_linear_pixel(src_x, y, copy_image, row, col):
+    x1_neighbor1, y1_neighbor1 = math.floor(src_x), math.floor(y)
+    x1_neighbor2, y1_neighbor2 = x1_neighbor1, y1_neighbor1 + 1
+    x2_neighbor1, y2_neighbor1 = x1_neighbor1 + 1, y1_neighbor1
+    x2_neighbor2, y2_neighbor2 = x1_neighbor1 + 1, y1_neighbor1 + 1
+
+    gap_x, gap_y = src_x - x1_neighbor1, y + 0.2 - y1_neighbor1
+    new_pixel = copy_image[y1_neighbor1][x1_neighbor1]
+    if x2_neighbor2 + 1 < col and y2_neighbor2 + 1 < row:
+        sum = (1 - gap_x) * (1 - gap_y) * int(copy_image[y1_neighbor1][x1_neighbor1]) + \
+                     (1 - gap_x) * gap_y * int(copy_image[y2_neighbor1][x2_neighbor1]) + \
+                     gap_x * (1 - gap_y) * int(copy_image[y1_neighbor2][x1_neighbor2]) + \
+                     gap_x * gap_y * int(copy_image[y2_neighbor2][x2_neighbor2])
+        new_pixel = sum
+    return new_pixel
+
+
+def get_ellipse(y, delta):
+    t = pow(y - ellipse_vals[2][1], 2) / pow(ellipse_vals[1], 2)
+    c = pow(ellipse_vals[2][0], 2) - (1 - t) * pow(ellipse_vals[0], 2)
+    b = -2 * ellipse_vals[2][0]
     a = 1
 
-    x1 = (-b - math.sqrt(pow(b, 2) - 4 * a * c)) / (2 * a)
-    x2 = (-b + math.sqrt(pow(b, 2) - 4 * a * c)) / (2 * a)
+    res1 = (-b - math.sqrt(pow(b, 2) - 4 * a * c)) / (2 * a)
+    res2 = (-b + math.sqrt(pow(b, 2) - 4 * a * c)) / (2 * a)
 
-    res = x1 if delta == -1 else x2
+    res = res1 if delta == -1 else res2
     return abs(res)
 
-def nn_interpolation(img, y, x):
-    y = np.clip(np.floor(y+0.5), 0, img.shape[0]-1).astype(int)
-    x = np.clip(np.floor(x+0.5), 0, img.shape[1]-1).astype(int)
-    return img[y, x]
 
 def click_event(event, x, y, flags, params):
     global clicked_x
@@ -109,41 +118,38 @@ def click_event(event, x, y, flags, params):
     global x2, y2
     # checking for left mouse clicks
     if event == cv2.EVENT_LBUTTONDOWN:
-        print('num of clicks: ', num_of_clicks)
-        if num_of_clicks == 0: #click on top left rectangle
+        if num_of_clicks == 0:  # click on top left rectangle
             x1 = x
             y1 = y
             points[0][0] = x1
             points[0][1] = y1
-        elif num_of_clicks == 1:
+            print('click on the image to spot the bottom right corner of the rectangle\n')
+        elif num_of_clicks == 1:  # click on bottom right rectangle
             x2 = x
             y2 = y
             points[1][0] = x2
             points[1][1] = y2
-        elif num_of_clicks == 2:
+            print('click on the image to spot the parabola point\n')
+        elif num_of_clicks == 2:  # click on parabola point
             clicked_x = x
             clicked_y = y
             points[2][0] = clicked_x
             points[2][1] = clicked_y
+            print("click again to see the interpolation\n")
         num_of_clicks += 1
 
-def draw_rect(usrimg):
-    cv2.rectangle(img, (x1, y1), (x2, y2),  color=color, thickness=thickness)
 
-# Press the green button in the gutter to run the script.
 # --------- Read and present image -------------
-# path = input("Hi, pls enter image path:\n")
-img = cv2.imread("/Users/gal_private/Documents/Digital-Image-Processing-ass1//test3.jpeg", 0)
+path = input("Hi, pls enter image path:\n")
+img = cv2.imread(path, 0)
 copy_image = img.copy()
+print('click on the image to spot the top left corner of the rectangle\n')
 
 while True:
     x_mid = (x2 + x1) / 2
     x_mid_round = int(x_mid)
-    col, row = img.shape[:2]
-    new_image = np.zeros((col, row))
 
-
-    if num_of_clicks == 3: #the user picked the parabola position
+    if num_of_clicks == 3:  # the user picked the parabola position
         y_mid = int((y1 + y2) / 2)
         center = (x_mid_round, y_mid)
 
@@ -156,36 +162,27 @@ while True:
         angle = 180 if x_mid_round < clicked_x else 0
         delta = 1 if x_mid_round < clicked_x else -1
 
-        cv2.ellipse(img, center, axes, angle, startAngle, endAngle, (255,255,255), 2)
-        elipseEqVals = (radiusX, radiusY, center)
+        cv2.ellipse(img, center, axes, angle, startAngle, endAngle, (255, 255, 255), 2)
+        ellipse_vals = (radiusX, radiusY, center)
 
-    elif num_of_clicks == 2: #the rectangle points were chosen, the parbola isn't
+    elif num_of_clicks == 2:  # the rectangle points were chosen, the parbola isn't
         thickness = 2
         color = (255, 255, 255)
-        img = cv2.rectangle(img, (x1, y1), (x2, y2),  color=color, thickness=thickness)
+        img = cv2.rectangle(img, (x1, y1), (x2, y2), color=color, thickness=thickness)
         cv2.line(img, (x_mid_round, y1), (x_mid_round, y2), color, thickness)
 
     elif num_of_clicks == 4:
-        newmat = cubic_lnterpolation(copy_image, delta)
-        # newmat = linear_lnterpolation(copy_image, delta)
-        # newmat = deformnn(copy_image, delta)
+        cubic_img = cubic_interpolation(copy_image, delta)
+        linear_img = linear_interpolation(copy_image, delta)
+        nn_img = nn_interpolation(copy_image, delta)
+        cv2.imshow("cubic_img", cubic_img)
+        cv2.imshow("linear_img", linear_img)
+        cv2.imshow("nn_img", nn_img)
 
 
-
-    for x in range(0,3):
+    for x in range(0, 3):
         cv2.circle(img, (int(points[x][0]), int(points[x][1])), 10, (255, 255, 255), cv2.FILLED)
 
-
     cv2.imshow(img_name, img)
-    cv2.setWindowProperty(img_name, cv2.WND_PROP_TOPMOST, 1)
     cv2.setMouseCallback(img_name, click_event)
     cv2.waitKey(1)
-
-
-
-
-
-
-
-
-
